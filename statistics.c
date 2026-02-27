@@ -112,10 +112,10 @@ int main(int argc, char *argv[])
     pthread_join(t_max, NULL);
     pthread_join(t_std, NULL);
 
-    printf("The average value is %.2f\n", g_average);
+    printf("The average value is %d\n", (int)g_average);
     printf("The minimum value is %d\n", g_minimum);
     printf("The maximum value is %d\n", g_maximum);
-    printf("The Standard Deviation is %.2f\n", g_std_dev);
+    printf("The Standard Deviation is %.1f\n", g_std_dev);
 
     return 0;
 }
