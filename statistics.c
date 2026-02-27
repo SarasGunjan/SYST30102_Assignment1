@@ -1,85 +1,86 @@
-#include <stdio.h>   // for printf
-#include <stdlib.h>  // for atoi
-#include <math.h>    // for sqrt because this one was giving an error in the compiler 
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <pthread.h>
 
-// Global variables to store results for it to be later used by threads
 double g_average = 0.0;
 int g_minimum = 0;
 int g_maximum = 0;
 double g_std_dev = 0.0;
 
-// Function to calculate average
-void compute_average(const int numbers[], int count)
+typedef struct
 {
+    const int *numbers;
+    int count;
+} StatsArgs;
+
+void *thread_average(void *arg)
+{
+    StatsArgs *args = (StatsArgs *)arg;
     int sum = 0;
 
-    // first adding all numbers
-    for (int i = 0; i < count; i++)
+    for (int i = 0; i < args->count; i++)
     {
-        sum += numbers[i];
+        sum += args->numbers[i];
     }
 
-    // then storing the result in a global variable
-    g_average = (double)sum / count;
+    g_average = (double)sum / args->count;
+    return NULL;
 }
 
-// Function to calculate minimum value
-void compute_minimum(const int numbers[], int count)
+void *thread_minimum(void *arg)
 {
-    int min_val = numbers[0];  // initally storing the first number as the minimum
+    StatsArgs *args = (StatsArgs *)arg;
+    int min_val = args->numbers[0];
 
-    // Compare with rest of numbers
-    for (int i = 1; i < count; i++)
+    for (int i = 1; i < args->count; i++)
     {
-        if (numbers[i] < min_val)
+        if (args->numbers[i] < min_val)
         {
-            min_val = numbers[i];
+            min_val = args->numbers[i];
         }
     }
 
-    // Store result globally
     g_minimum = min_val;
+    return NULL;
 }
 
-// Function to calculate maximum value
-void compute_maximum(const int numbers[], int count)
+void *thread_maximum(void *arg)
 {
-    int max_val = numbers[0];  // assume first number is maximum
+    StatsArgs *args = (StatsArgs *)arg;
+    int max_val = args->numbers[0];
 
-    // Compare with rest of numbers
-    for (int i = 1; i < count; i++)
+    for (int i = 1; i < args->count; i++)
     {
-        if (numbers[i] > max_val)
+        if (args->numbers[i] > max_val)
         {
-            max_val = numbers[i];
+            max_val = args->numbers[i];
         }
     }
 
-    // Store result globally
     g_maximum = max_val;
+    return NULL;
 }
 
-// Function to calculate standard deviation
-void compute_std_dev(const int numbers[], int count)
+void *thread_std_dev(void *arg)
 {
+    StatsArgs *args = (StatsArgs *)arg;
     double variance_sum = 0.0;
 
-    // Use previously calculated average
-    for (int i = 0; i < count; i++)
+    for (int i = 0; i < args->count; i++)
     {
-        double diff = numbers[i] - g_average;
-        variance_sum += diff * diff;  // square of difference
+        double diff = args->numbers[i] - g_average;
+        variance_sum += diff * diff;
     }
 
-    double variance = variance_sum / count;
-
-    // Store final result globally
+    double variance = variance_sum / args->count;
     g_std_dev = sqrt(variance);
+
+    return NULL;
 }
 
 int main(int argc, char *argv[])
 {
-    // Check if at least one number was provided
     if (argc < 2)
     {
         printf("Please provide at least one number.\n");
@@ -89,19 +90,28 @@ int main(int argc, char *argv[])
     int count = argc - 1;
     int numbers[count];
 
-    // Convert command line input from string to integer
     for (int i = 0; i < count; i++)
     {
         numbers[i] = atoi(argv[i + 1]);
     }
 
-    // Call each computation function
-    compute_average(numbers, count);
-    compute_minimum(numbers, count);
-    compute_maximum(numbers, count);
-    compute_std_dev(numbers, count);
+    StatsArgs args;
+    args.numbers = numbers;
+    args.count = count;
 
-    // Print final results
+    pthread_t t_avg, t_min, t_max, t_std;
+
+    pthread_create(&t_avg, NULL, thread_average, &args);
+    pthread_create(&t_min, NULL, thread_minimum, &args);
+    pthread_create(&t_max, NULL, thread_maximum, &args);
+
+    pthread_join(t_avg, NULL);
+    pthread_create(&t_std, NULL, thread_std_dev, &args);
+
+    pthread_join(t_min, NULL);
+    pthread_join(t_max, NULL);
+    pthread_join(t_std, NULL);
+
     printf("The average value is %.2f\n", g_average);
     printf("The minimum value is %d\n", g_minimum);
     printf("The maximum value is %d\n", g_maximum);
